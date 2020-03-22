@@ -6,6 +6,11 @@ const {
 	getCounties: rkiGetCounties
 } = require('./rki.service');
 
+const { 
+	getCopyright: statsCopyright,
+	getCounties: statsGetCounties
+} = require('./statistics.service');
+
 const {
 	getCopyright: rsklCopyright,
 	getData: rsklGetData
@@ -18,7 +23,8 @@ class DataCollector {
 			debug: false,
 			debugCache: false,
 			rkiCacheFile: '.rki.cache.json',
-			rsklCacheFile: '.rskl.cache.json'
+			rsklCacheFile: '.rskl.cache.json',
+			statsCacheFile: '.stats.cache.json',
 		}, options);
 
 		this.log = this.options.debug ?  console.log : (() => {});
@@ -36,9 +42,10 @@ class DataCollector {
 
 	async _load() {
 		this.data = [];
-		const sources = [
+		this.sources = [
 			rkiCopyright(),
-			rsklCopyright()
+			rsklCopyright(),
+			statsCopyright()
 		];
 
 		var counties;
@@ -49,11 +56,28 @@ class DataCollector {
 			} else {
 				this.log(`no cache availible loading rki-data from server...`);
 				counties = await rkiGetCounties();
+				await fs.writeJSON(this.options.rkiCacheFile, counties);
 			}
+		} else {
+			counties = await rkiGetCounties();
 		}
 
+		var statsData;
+		if (this.options.debugCache) {
+			if (fs.existsSync(this.options.statsCacheFile)) {
+				this.log(`loading stats-data from cache...`);
+				statsData = await fs.readJSON(this.options.statsCacheFile);
+			} else {
+				this.log(`no cache availible loading stats-data from server...`);
+				statsData = await statsGetCounties();
+				await fs.writeJSON(this.options.statsCacheFile, statsData || {});
+			}
+		} else {
+			statsData = await statsGetCounties();
+		}
+
+		var rsklData = [];
 		if (this.options.googleSheetsApi) {
-			var rsklData;
 			if (this.options.debugCache) {
 				if (fs.existsSync(this.options.rsklCacheFile)) {
 					this.log(`loading rskl-data from cache...`);
@@ -61,20 +85,17 @@ class DataCollector {
 				} else {
 					this.log(`no cache availible loading rskl-data from server...`);
 					rsklData = await rsklGetData(this.options.googleSheetsApi);
+					await fs.writeJSON(this.options.rsklCacheFile, rsklData || {});
 				}
+			} else {
+				rsklData = await rsklGetData(this.options.googleSheetsApi);
 			}
 		}
 
-		if (this.options.debugCache) {
-			this.log(`saving data to cache files...`);
-			await fs.writeJSON(this.options.rkiCacheFile, counties);
-			await fs.writeJSON(this.options.rsklCacheFile, rsklData || {});
-		}
-
-			this._combineData(counties, rsklData);
+		this._combineData(counties, statsData, rsklData);
 	}
 
-	_combineData(counties, rsklData) {
+	_combineData(counties, statsData, rsklData) {
 		counties.forEach(county => {
 			var entry = {};
 
@@ -83,17 +104,18 @@ class DataCollector {
 				return;
 			}
 
-			var rsklEntry = rsklData.find(d => `${county.AGS}`.includes(d.AGS));
+			var rsklEntry = rsklData.find(d => county.AGS.includes(d.AGS));
+			var statsEntry = statsData.find(d => county.AGS.includes(d.ars) || `${d.ars}`.includes(county.AGS));
 
-			//TODO: use last report or rsklData.time if newer!
+			//TODO: use last report or rsklData.time or statsEntry.lastUpdate is newer
 			var lastUpdate = new Date().getTime();
 
 			entry.meta = {
 				lastUpdate
 			};
 
-			if (sources && sources.length) {
-				entry.meta.sources = sources
+			if (this.sources && this.sources.length) {
+				entry.meta.sources = this.sources
 			}
 
 			entry.region = {
@@ -103,6 +125,12 @@ class DataCollector {
 				BEZ: county.BEZ,
 				state: county.BL,
 				name: county.county,
+			}
+
+			if (statsEntry) {
+				["area", "malePopulation", "femalePopulation", "populationPerSquareKilometer"].forEach(key => {
+					if (statsEntry[key]) entry.region[key] = statsEntry[key];
+				});
 			}
 
 			entry.data = {
@@ -150,7 +178,6 @@ class DataCollector {
 	async getCountyDataByObjectId(id) {
 		this.log(`DataCollector.getCountyDataByObjectId(id:${id})`);
 		await this._ensureData();
-		console.log(this.data.map(d => d.region.OBJECTID));
 		return this.data.find(d => d.region.OBJECTID == id) || null;
 	}
 
