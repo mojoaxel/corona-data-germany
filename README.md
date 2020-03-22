@@ -13,8 +13,8 @@ npm install --save corona-data-germany
 ### print data for AGS=05370 (Heinsberg)
 
 ```js
-	const county = await dataCollector.getCountyDataByAGS('05370');
-	console.log("Found county with AGS=05370: ", county);
+const county = await dataCollector.getCountyDataByAGS('05370');
+console.log("Found county with AGS=05370: ", county);
 ```
 
 Output:
@@ -30,19 +30,17 @@ Output:
     ]
   },
   region: {
-    OBJECTID: 86,
+    /* LK: Landkreis; SK: Kreisfreie Stadt; usw. */
+    name: 'LK Heinsberg',
 
-		/* LK: Landkreis; SK: Kreisfreie Stadt; usw. */
-		name: 'LK Heinsberg',
-		
-		/* Amtliche Gemeindeschlüssel */
-		AGS: '05370',
+    /* Amtliche Gemeindeschlüssel */
+    AGS: '05370',
     GEN: 'Heinsberg',
-		BEZ: 'Kreis',
-		
-		/* Bundesland */
-		state: 'Nordrhein-Westfalen',
-		
+    BEZ: 'Kreis',
+
+    /* Bundesland */
+    state: 'Nordrhein-Westfalen',
+
     population: 254322,
     area: 627.92,
     malePopulation: 125849,
@@ -50,11 +48,11 @@ Output:
     populationPerSquareKilometer: 4277
   },
   data: { 
-		cases: 808, 
-		deaths: 5, 
-		immune: 84, 
-		quarantine: 71
-	}
+    cases: 808, 
+    deaths: 5, 
+    immune: 84, 
+    quarantine: 71
+  }
 }
 ```
 
@@ -76,6 +74,7 @@ SK Lübeck; 21; 1
 SK Neumünster; 7; 0
 LK Dithmarschen; 12; 0
 LK Herzogtum Lauenburg; 21; 0
+...
 ```
 
 ## License

@@ -24,7 +24,7 @@
   "homepage": "https://github.com/mojoaxel/corona-data-germany#readme",
   "dependencies": {
     "axios": "^0.19.2",
-    "covid19-risklayer-data": "0.0.1",
+    "covid19-risklayer-data": "0.0.2",
     "deepmerge": "^4.2.2",
     "fs-extra": "^9.0.0"
   }

@@ -51,6 +51,9 @@ class DataCollector {
 		];
 
 		//TODO: try https://www.npmjs.com/package/axios-cache-adapter
+		if (this.options.debugCache) {
+			await fs.ensureDir('.cache');
+		}
 
 		var rkiCounties;
 		if (this.options.debugCache) {

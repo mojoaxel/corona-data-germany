@@ -75,7 +75,7 @@ async function getDistributionData(options = {}) {
 	const opts = deepmerge({
 		queryUrl: "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query",
 		fields: [
-			"OBJECTID",
+			"*",
 		]
 	}, options);
 
@@ -87,10 +87,8 @@ async function getDistributionData(options = {}) {
 				where: `(Geschlecht<>'unbekannt' AND Altersgruppe<>'unbekannt')`,
 				returnGeometry: false,
 				spatialRel: "esriSpatialRelIntersects",
-				outFields: "*",
-				//groupByFieldsForStatistics: 'Altersgruppe,Geschlecht',
+				outFields: opts.fields.join(','),
 				groupByFieldsForStatistics: 'IdLandkreis,Geschlecht,Altersgruppe',
-				//orderByFields: 'Altersgruppe asc',
 				orderByFields: 'IdLandkreis asc',
 				outStatistics: '[{"statisticType":"sum","onStatisticField":"AnzahlFall","outStatisticFieldName":"value"}]',
 				cacheHint: true,
