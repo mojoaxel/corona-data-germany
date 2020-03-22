@@ -50,6 +50,8 @@ class DataCollector {
 			statsCopyright()
 		];
 
+		//TODO: try https://www.npmjs.com/package/axios-cache-adapter
+
 		var rkiCounties;
 		if (this.options.debugCache) {
 			if (fs.existsSync(this.options.rkiCacheFile)) {
@@ -132,9 +134,11 @@ class DataCollector {
 			var distributionEntrys = rkiDistribution
 				.filter(d => AGS.includes(d.AGS) || `${d.AGS}`.includes(AGS))
 				.map(d => {
-					//remove AGS from all entries
-					delete d.AGS;
-					return d;
+					return {
+						gender: d.Geschlecht.toLowerCase(),
+						name: d.Altersgruppe,
+						count: d.value
+					}
 				})
 
 			//TODO: use last report or rsklData.time or statsEntry.lastUpdate is newer
@@ -159,23 +163,21 @@ class DataCollector {
 			}
 
 			if (statsEntry) {
-				["area", "population_male", "population_female", "populationPerSquareKilometer"].forEach(key => {
+				["area", "population_male", "population_female", "population_density_km"].forEach(key => {
 					if (statsEntry[key]) entry.region[key] = statsEntry[key];
 				});
 			}
 
 			entry.data = {
-				cases: county.cases,
-				deaths: county.deaths,
-
-				//death_rate: county.death_rate,
-				//cases_per_100k: county.cases_per_100k,
-				//cases_per_population: county.cases_per_population,
+				infected_total: county.cases,
+				deaths_total: county.deaths,
+				death_rate: county.death_rate,
+				cases_per_100k: county.cases_per_100k
 			}
 
 			if (rsklEntry) {
 				["immune", "quarantine", "intensive"].forEach(key => {
-					if (rsklEntry[key]) entry.data[key] = rsklEntry[key];
+					if (rsklEntry[key]) entry.data[`${key}_total`] = rsklEntry[key];
 				});
 				//TODO: check if "cases" and "death" are the same as from rki. If not show warning!
 			}
