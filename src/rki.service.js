@@ -1,49 +1,34 @@
 const axios = require('axios').default;
 const deepmerge = require('deepmerge');
 
-/*
-"attributes": {
-	"OBJECTID": 86,
-	"ADE": 4,
-	"GF": 4,
-	"BSG": 1,
-	"RS": "05370",  // Regionalschlüssel
-	"AGS": "05370",  // Amtliche Gemeindeschlüssel
-	"SDV_RS": "053700016016",
-	"GEN": "Heinsberg",
-	"BEZ": "Kreis",
-	"IBZ": 42,
-	"BEM": "--",
-	"NBD": "ja",
-	"SN_L": "05",
-	"SN_R": "3",
-	"SN_K": "70",
-	"SN_V1": "00",
-	"SN_V2": "00",
-	"SN_G": "000",
-	"FK_S3": "R",
-	"NUTS": "DEA29",
-	"RS_0": "053700000000",
-	"AGS_0": "05370000",
-	"WSK": "2009/01/01 00:00:00.000",
-	"EWZ": 254322,
-	"KFL": 627.92,
-	"DEBKG_ID": "DEBKGDL20000DX0T",
-	"Shape__Area": 627310851.182861,
-	"Shape__Length": 166217.280069434,
-	"death_rate": 0.619578686493185,
-	"cases": 807,
-	"deaths": 5,
-	"cases_per_100k": 317.314270884941,
-	"cases_per_population": 0.317314270884941,
-	"BL": "Nordrhein-Westfalen",
-	"BL_ID": "5",
-	"county": "LK Heinsberg"
-}
-*/
 
 function getCopyright() {
 	return "Robert Koch-Institut";
+}
+
+async function _fetchAll(url, options, key) {
+	var data = [];
+	const MAX_DATA = 100000;
+	var resultRecordCount = 2000;
+	var resultOffset = 0;
+	var lastDataLength = resultRecordCount;
+
+	while ((lastDataLength >= resultRecordCount) && (resultOffset <= MAX_DATA)) {
+		console.log(`fetching data ${resultOffset}-${resultOffset+resultRecordCount}`);
+		const opt = deepmerge(options, { 
+			params: {
+				resultOffset, 
+				resultRecordCount 
+			}
+		});
+		var response = await axios.get(url, opt);
+		lastDataLength = response.data[key].length;
+		resultOffset += lastDataLength;
+		data = deepmerge(data, response.data);
+	}
+	return {
+		data
+	};
 }
 
 async function getCounties(options = {}) {
@@ -69,17 +54,15 @@ async function getCounties(options = {}) {
 
 	var data = [];
 	try {
-		var response = await axios.get(opts.queryUrl, {
+		var response = await _fetchAll(opts.queryUrl, {
 			params: {
 				f: "json",
 				where: "1=1",
 				returnGeometry: false,
 				outFields: opts.fields.join(','),
-				resultOffset: 0,
-				resultRecordCount: 3000,
 				cacheHint: true
 			}
-		});
+		}, 'features');
 		data = response.data.features;
 	} catch(err) {
 		throw new Error(`Error requesting data from RKI: ${err}`);
@@ -88,7 +71,48 @@ async function getCounties(options = {}) {
 	return data.map(e => e.attributes);
 }
 
+async function getDistributionData(options = {}) {
+	const opts = deepmerge({
+		queryUrl: "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_COVID19/FeatureServer/0/query",
+		fields: [
+			"OBJECTID",
+		]
+	}, options);
+
+	var data = [];
+	try {
+		var response = await _fetchAll(opts.queryUrl, {
+			params: {
+				f: 'json',
+				where: `(Geschlecht<>'unbekannt' AND Altersgruppe<>'unbekannt')`,
+				returnGeometry: false,
+				spatialRel: "esriSpatialRelIntersects",
+				outFields: "*",
+				//groupByFieldsForStatistics: 'Altersgruppe,Geschlecht',
+				groupByFieldsForStatistics: 'IdLandkreis,Geschlecht,Altersgruppe',
+				//orderByFields: 'Altersgruppe asc',
+				orderByFields: 'IdLandkreis asc',
+				outStatistics: '[{"statisticType":"sum","onStatisticField":"AnzahlFall","outStatisticFieldName":"value"}]',
+				cacheHint: true,
+			}
+		}, 'features');
+		data = response.data.features
+			.map(d => d.attributes)
+			.map(d => {
+				// rename IdLandkreis to AGS
+				d.AGS = d.IdLandkreis;
+				delete d.IdLandkreis;
+				return d;
+			});
+	} catch(err) {
+		throw new Error(`Error requesting data from RKI: ${err}`);
+	}
+
+	return data;
+}
+
 module.exports = {
 	getCopyright,
-	getCounties
+	getCounties,
+	getDistributionData
 }
