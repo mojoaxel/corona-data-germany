@@ -3,7 +3,8 @@ const deepmerge = require('deepmerge');
 
 const { 
 	getCopyright: rkiCopyright,
-	getCounties: rkiGetCounties
+	getCounties: rkiGetCounties,
+	getDistributionData: rkiGetDistributionData
 } = require('./rki.service');
 
 const { 
@@ -22,9 +23,10 @@ class DataCollector {
 		this.options = deepmerge({
 			debug: false,
 			debugCache: false,
-			rkiCacheFile: '.rki.cache.json',
-			rsklCacheFile: '.rskl.cache.json',
-			statsCacheFile: '.stats.cache.json',
+			rkiCacheFile: '.cache/.rki-counties.json',
+			rkiDistributionCacheFile: '.cache/.rki-distribution.json',
+			rsklCacheFile: '.cache/.rskl.json',
+			statsCacheFile: '.cache/.stats.json',
 		}, options);
 
 		this.log = this.options.debug ?  console.log : (() => {});
@@ -48,18 +50,34 @@ class DataCollector {
 			statsCopyright()
 		];
 
-		var counties;
+		//TODO: try https://www.npmjs.com/package/axios-cache-adapter
+
+		var rkiCounties;
 		if (this.options.debugCache) {
 			if (fs.existsSync(this.options.rkiCacheFile)) {
 				this.log(`loading rki-data from cache...`);
-				counties = await fs.readJSON(this.options.rkiCacheFile);
+				rkiCounties = await fs.readJSON(this.options.rkiCacheFile);
 			} else {
 				this.log(`no cache availible loading rki-data from server...`);
-				counties = await rkiGetCounties();
-				await fs.writeJSON(this.options.rkiCacheFile, counties);
+				rkiCounties = await rkiGetCounties();
+				await fs.writeJSON(this.options.rkiCacheFile, rkiCounties);
 			}
 		} else {
-			counties = await rkiGetCounties();
+			rkiCounties = await rkiGetCounties();
+		}
+
+		var rkiDistribution;
+		if (this.options.debugCache) {
+			if (fs.existsSync(this.options.rkiDistributionCacheFile)) {
+				this.log(`loading rki-distribution-data from cache...`);
+				rkiDistribution = await fs.readJSON(this.options.rkiDistributionCacheFile);
+			} else {
+				this.log(`no cache availible loading rki-distribution-data from server...`);
+				rkiDistribution = await rkiGetDistributionData();
+				await fs.writeJSON(this.options.rkiDistributionCacheFile, rkiDistribution);
+			}
+		} else {
+			rkiDistribution = await rkiGetDistributionData();
 		}
 
 		var statsData;
@@ -92,11 +110,11 @@ class DataCollector {
 			}
 		}
 
-		this._combineData(counties, statsData, rsklData);
+		this._combineData(rkiCounties, rkiDistribution, statsData, rsklData);
 	}
 
-	_combineData(counties, statsData, rsklData) {
-		counties.forEach(county => {
+	_combineData(rkiCounties, rkiDistribution, statsData, rsklData) {
+		rkiCounties.forEach(county => {
 			var entry = {};
 
 			// we need to use RS for berlin. See #1
@@ -108,10 +126,20 @@ class DataCollector {
 			}
 
 			var rsklEntry = rsklData.find(d => AGS.includes(d.AGS));
-			var statsEntry = statsData.find(d => AGS.includes(d.ars) || `${d.ars}`.includes(AGS));
+			var statsEntry = statsData.find(d => AGS.includes(d.ags) || `${d.ags}`.includes(AGS));
 			if (!statsEntry) {
 				this.log(`WARN: no statistics-data found for AGS: "${AGS}" (${county.county || '?'})`)
 			}
+
+			var distributionEntrys = rkiDistribution
+				.filter(d => AGS.includes(d.AGS) || `${d.AGS}`.includes(AGS))
+				.map(d => {
+					return {
+						gender: d.Geschlecht.toLowerCase(),
+						name: d.Altersgruppe,
+						count: d.value
+					}
+				})
 
 			//TODO: use last report or rsklData.time or statsEntry.lastUpdate is newer
 			var lastUpdate = new Date().getTime();
@@ -135,28 +163,28 @@ class DataCollector {
 			}
 
 			if (statsEntry) {
-				["area", "malePopulation", "femalePopulation", "populationPerSquareKilometer"].forEach(key => {
+				["area", "population_male", "population_female", "population_density_km"].forEach(key => {
 					if (statsEntry[key]) entry.region[key] = statsEntry[key];
 				});
 			}
 
 			entry.data = {
-				cases: county.cases,
-				deaths: county.deaths,
-
-				//death_rate: county.death_rate,
-				//cases_per_100k: county.cases_per_100k,
-				//cases_per_population: county.cases_per_population,
+				infected_total: county.cases,
+				deaths_total: county.deaths,
+				death_rate: county.death_rate,
+				cases_per_100k: county.cases_per_100k
 			}
 
 			if (rsklEntry) {
 				["immune", "quarantine", "intensive"].forEach(key => {
-					if (rsklEntry[key]) entry.data[key] = rsklEntry[key];
+					if (rsklEntry[key]) entry.data[`${key}_total`] = rsklEntry[key];
 				});
 				//TODO: check if "cases" and "death" are the same as from rki. If not show warning!
 			}
 
-			//TODO: entry.distribution
+			if (distributionEntrys) {
+				entry.distribution = distributionEntrys
+			}
 
 			//TODO: entry.reports
 

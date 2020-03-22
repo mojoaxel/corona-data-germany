@@ -1,4 +1,5 @@
 const DataCollector = require('./src/dataCollector');
+const { getDistributionData } = require('./src/rki.service');
 
 /**
  * For this to work you need a *.env" file in the save directory 
@@ -27,11 +28,11 @@ require('dotenv').config();
 	const county = await dataCollector.getCountyDataByAGS('05370');
 	console.log("Found county with AGS=05370: ", county);
 
-	/* print all data as CSV */
-	const counties = await dataCollector.getCoutiesData();
-	console.log(`name; cases; deaths`);
-	counties.forEach(c => {
-		console.log(`${c.region.name}; ${c.data.cases}; ${c.data.deaths}`);
-	});
+	// /* print all data as CSV */
+	// const counties = await dataCollector.getCoutiesData();
+	// console.log(`name; cases; deaths`);
+	// counties.forEach(c => {
+	// 	console.log(`${c.region.name}; ${c.data.cases}; ${c.data.deaths}`);
+	// });
 
 })();
