@@ -176,6 +176,12 @@ class DataCollector {
 		return this.data.map(d => d.region) || [];
 	}
 
+	async getCoutiesData() {
+		this.log(`DataCollector.getCoutiesData()`);
+		await this._ensureData();
+		return this.data;
+	}
+
 	async getCountyDataByAGS(ags) {
 		this.log(`DataCollector.getCountyDataByAGS(ags:${ags})`);
 		await this._ensureData();

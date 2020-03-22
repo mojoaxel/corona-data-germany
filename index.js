@@ -23,7 +23,15 @@ require('dotenv').config();
 		}
 	});
 
-	const county = await dataCollector.getCountyDataByObjectId(86);
-	console.log("Found county with ObjId=86: ", county);
+	/* print data for AGS=05370 (Heinsberg) */
+	const county = await dataCollector.getCountyDataByAGS('05370');
+	console.log("Found county with AGS=05370: ", county);
+
+	/* print all data as CSV */
+	const counties = await dataCollector.getCoutiesData();
+	console.log(`name; cases; deaths`);
+	counties.forEach(c => {
+		console.log(`${c.region.name}; ${c.data.cases}; ${c.data.deaths}`);
+	});
 
 })();
