@@ -99,13 +99,19 @@ class DataCollector {
 		counties.forEach(county => {
 			var entry = {};
 
-			if (!county.AGS) {
+			// we need to use RS for berlin. See #1
+			const AGS = `${county.AGS || county.RS}`;
+
+			if (!AGS) {
 				this.log(`WARN: Skipping a county because of a missing AGS: "${county.name || county.GEN}"`);
 				return;
 			}
 
-			var rsklEntry = rsklData.find(d => county.AGS.includes(d.AGS));
-			var statsEntry = statsData.find(d => county.AGS.includes(d.ars) || `${d.ars}`.includes(county.AGS));
+			var rsklEntry = rsklData.find(d => AGS.includes(d.AGS));
+			var statsEntry = statsData.find(d => AGS.includes(d.ars) || `${d.ars}`.includes(AGS));
+			if (!statsEntry) {
+				this.log(`WARN: no statistics-data found for AGS: "${AGS}" (${county.county || '?'})`)
+			}
 
 			//TODO: use last report or rsklData.time or statsEntry.lastUpdate is newer
 			var lastUpdate = new Date().getTime();
@@ -120,11 +126,12 @@ class DataCollector {
 
 			entry.region = {
 				OBJECTID: county.OBJECTID,
-				AGS: county.AGS,
+				AGS: AGS,
 				GEN: county.GEN,
 				BEZ: county.BEZ,
 				state: county.BL,
 				name: county.county,
+				population: county.EWZ
 			}
 
 			if (statsEntry) {

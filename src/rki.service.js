@@ -7,8 +7,8 @@ const deepmerge = require('deepmerge');
 	"ADE": 4,
 	"GF": 4,
 	"BSG": 1,
-	"RS": "05370",
-	"AGS": "05370",
+	"RS": "05370",  // Regionalschlüssel
+	"AGS": "05370",  // Amtliche Gemeindeschlüssel
 	"SDV_RS": "053700016016",
 	"GEN": "Heinsberg",
 	"BEZ": "Kreis",
@@ -51,9 +51,11 @@ async function getCounties(options = {}) {
 		queryUrl: "https://services7.arcgis.com/mOBPykOjAyBO2ZKk/arcgis/rest/services/RKI_Landkreisdaten/FeatureServer/0/query",
 		fields: [
 			"OBJECTID",
+			"RS",
 			"AGS",
 			"GEN",
 			"BEZ",
+			"EWZ",
 			"AGS_0",
 			"BL",
 			"county",
