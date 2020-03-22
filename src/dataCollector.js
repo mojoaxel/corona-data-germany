@@ -4,7 +4,8 @@ const deepmerge = require('deepmerge');
 const { 
 	getCopyright: rkiCopyright,
 	getCounties: rkiGetCounties,
-	getDistributionData: rkiGetDistributionData
+	getDistributionData: rkiGetDistributionData,
+	getReportsData: rkiGetReportsData
 } = require('./rki.service');
 
 const { 
@@ -25,6 +26,7 @@ class DataCollector {
 			debugCache: false,
 			rkiCacheFile: '.cache/.rki-counties.json',
 			rkiDistributionCacheFile: '.cache/.rki-distribution.json',
+			rkiReportsCacheFile: '.cache/.rki-reports.json',
 			rsklCacheFile: '.cache/.rskl.json',
 			statsCacheFile: '.cache/.stats.json',
 		}, options);
@@ -83,6 +85,20 @@ class DataCollector {
 			rkiDistribution = await rkiGetDistributionData();
 		}
 
+		var rkiReports;
+		if (this.options.debugCache) {
+			if (fs.existsSync(this.options.rkiReportsCacheFile)) {
+				this.log(`loading rki-reports-data from cache...`);
+				rkiReports = await fs.readJSON(this.options.rkiReportsCacheFile);
+			} else {
+				this.log(`no cache availible loading rki-reports-data from server...`);
+				rkiReports = await rkiGetReportsData();
+				await fs.writeJSON(this.options.rkiReportsCacheFile, rkiReports);
+			}
+		} else {
+			rkiReports = await rkiGetReportsData();
+		}
+
 		var statsData;
 		if (this.options.debugCache) {
 			if (fs.existsSync(this.options.statsCacheFile)) {
@@ -113,10 +129,10 @@ class DataCollector {
 			}
 		}
 
-		this._combineData(rkiCounties, rkiDistribution, statsData, rsklData);
+		this._combineData(rkiCounties, rkiDistribution, rkiReports, statsData, rsklData);
 	}
 
-	_combineData(rkiCounties, rkiDistribution, statsData, rsklData) {
+	_combineData(rkiCounties, rkiDistribution, rkiReports, statsData, rsklData) {
 		rkiCounties.forEach(county => {
 			var entry = {};
 
@@ -139,9 +155,16 @@ class DataCollector {
 				.map(d => {
 					return {
 						gender: d.Geschlecht.toLowerCase(),
-						name: d.Altersgruppe,
+						age_group: d.Altersgruppe,
 						count: d.value
 					}
+				});
+
+			var reportsEntrys = rkiReports
+				.filter(d => AGS.includes(d.AGS) || `${d.AGS}`.includes(AGS))
+				.map(d => {
+					delete d.AGS;
+					return d;
 				})
 
 			//TODO: use last report or rsklData.time or statsEntry.lastUpdate is newer
@@ -186,7 +209,11 @@ class DataCollector {
 			}
 
 			if (distributionEntrys) {
-				entry.distribution = distributionEntrys
+				entry.distribution = distributionEntrys;
+			}
+
+			if (reportsEntrys) {
+				entry.reports = reportsEntrys;
 			}
 
 			//TODO: entry.reports
