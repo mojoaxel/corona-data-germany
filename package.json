@@ -1,0 +1,31 @@
+{
+  "name": "corona-data-germany",
+  "version": "0.0.1",
+  "description": "fresh #coronavirus data for germany",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mojoaxel/corona-data-germany.git"
+  },
+  "keywords": [
+    "corona",
+    "wirvsvirus",
+    "rki",
+    "covid-19"
+  ],
+  "author": "Alexander Wunschik <dev@wunschik.net>",
+  "license": "AGPL-3.0-or-later",
+  "bugs": {
+    "url": "https://github.com/mojoaxel/corona-data-germany/issues"
+  },
+  "homepage": "https://github.com/mojoaxel/corona-data-germany#readme",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "covid19-risklayer-data": "0.0.1",
+    "deepmerge": "^4.2.2",
+    "fs-extra": "^9.0.0"
+  }
+}
