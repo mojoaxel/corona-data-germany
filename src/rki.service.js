@@ -93,13 +93,16 @@ async function getDistributionData(options = {}) {
 		var response = await _fetchAll(opts.queryUrl, {
 			params: {
 				f: 'json',
-				where: `(Geschlecht<>'unbekannt' AND Altersgruppe<>'unbekannt')`,
+				where: '1=1',
 				returnGeometry: false,
 				spatialRel: "esriSpatialRelIntersects",
 				outFields: opts.fields.join(','),
 				groupByFieldsForStatistics: 'IdLandkreis,Geschlecht,Altersgruppe',
 				orderByFields: 'IdLandkreis asc',
-				outStatistics: '[{"statisticType":"sum","onStatisticField":"AnzahlFall","outStatisticFieldName":"value"}]',
+				outStatistics: `[
+					{"statisticType":"sum","onStatisticField":"AnzahlFall","outStatisticFieldName":"cases"},
+					{"statisticType":"sum","onStatisticField":"AnzahlTodesfall","outStatisticFieldName":"deaths"}
+				]`.trim().replace('\s*',' '),
 				cacheHint: true,
 			}
 		}, 'features');

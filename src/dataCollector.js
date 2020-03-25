@@ -154,9 +154,10 @@ class DataCollector {
 				.filter(d => AGS.includes(d.AGS) || `${d.AGS}`.includes(AGS))
 				.map(d => {
 					return {
-						gender: d.Geschlecht.toLowerCase(),
-						age_group: d.Altersgruppe,
-						count: d.value
+						infected_total: d.cases,
+						deaths_total: d.deaths,
+						gender: (d.Geschlecht.toLowerCase() === 'unbekannt') ? null : d.Geschlecht.toLowerCase(),
+						age_group: (d.Altersgruppe === 'unbekannt') ? null : d.Altersgruppe
 					}
 				});
 
@@ -169,9 +170,15 @@ class DataCollector {
 
 			//TODO: use last report or rsklData.time or statsEntry.lastUpdate is newer
 			var lastUpdate = new Date().getTime();
+			if (reportsEntrys) {
+				var lastEntry = reportsEntrys.sort((a, b) => (b.last_updated - a.last_updated))[0];
+				if (lastEntry) {
+					lastUpdate = lastEntry.last_updated;
+				}
+			}
 
 			entry.meta = {
-				lastUpdate
+				last_updated: lastUpdate
 			};
 
 			if (this.sources && this.sources.length) {
@@ -195,8 +202,8 @@ class DataCollector {
 			}
 
 			entry.data = {
-				infected_total: county.cases,
-				deaths_total: county.deaths,
+				infected_total: county.cases || 0,
+				deaths_total: county.deaths || 0,
 				death_rate: county.death_rate,
 				cases_per_100k: county.cases_per_100k
 			}
@@ -212,9 +219,10 @@ class DataCollector {
 				entry.distribution = distributionEntrys;
 			}
 
-			if (reportsEntrys) {
-				entry.reports = reportsEntrys;
-			}
+			//TODO:
+			// if (reportsEntrys) {
+			// 	entry.reports = reportsEntrys;
+			// }
 
 			//TODO: entry.reports
 
