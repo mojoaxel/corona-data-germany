@@ -4,7 +4,8 @@
   "description": "fresh #coronavirus data for germany",
   "main": "src/index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "sendToServer": "node sendToServer.js"
   },
   "repository": {
     "type": "git",
@@ -26,6 +27,7 @@
     "axios": "^0.19.2",
     "covid19-risklayer-data": "0.0.3",
     "deepmerge": "^4.2.2",
-    "fs-extra": "^9.0.0"
+    "fs-extra": "^9.0.0",
+    "ora": "^4.0.3"
   }
 }
