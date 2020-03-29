@@ -166,7 +166,7 @@ class DataCollector {
 				.map(d => {
 					delete d.AGS;
 					return d;
-				})
+				});
 
 			//TODO: use last report or rsklData.time or statsEntry.lastUpdate is newer
 			var lastUpdate = new Date().getTime();
@@ -219,10 +219,9 @@ class DataCollector {
 				entry.distribution = distributionEntrys;
 			}
 
-			//TODO:
-			// if (reportsEntrys) {
-			// 	entry.reports = reportsEntrys;
-			// }
+			if (reportsEntrys) {
+				entry.reports = reportsEntrys;
+			}
 
 			//TODO: entry.reports
 

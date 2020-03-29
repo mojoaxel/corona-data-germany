@@ -175,8 +175,7 @@ async function getReportsData(options = {}) {
 					gender: d.Geschlecht,
 					cases_new: d.AnzahlFall,
 					deaths_new: d.AnzahlTodesfall,
-					last_updated: d.Meldedatum,
-					//date_day: d.Datenstand.split(' ')[0]
+					last_updated: d.Meldedatum
 				};
 			});
 	} catch(err) {

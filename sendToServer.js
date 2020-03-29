@@ -1,6 +1,7 @@
 const DataCollector = require("./src/dataCollector");
 const axios = require("axios").default;
 const ora = require("ora");
+const deepmerge = require('deepmerge');
 
 /**
  * For this to work you need a *.env" file in the save directory
@@ -93,6 +94,101 @@ async function sendCases(county) {
   }
 }
 
+/**
+ * age_group
+ * gender
+ * cases_new
+ * deaths_new
+ * last_updated
+ */
+async function updateCases(county) {
+  // reduce to single days
+  let reports = county.reports.map(r => {
+    r.last_updated = (new Date(r.last_updated)).toISOString().split("T")[0];
+    delete r.age_group;
+    delete r.gender;
+    return r
+  }).reduce((acc, r) => {
+    if (acc[r.last_updated]) {
+      acc[r.last_updated].cases_total += r.cases_new;
+      acc[r.last_updated].deaths_total += r.deaths_new;
+    } else {
+      acc[r.last_updated] = {
+        last_updated: r.last_updated,
+        cases_total: r.cases_new,
+        deaths_total: r.deaths_new
+      };
+    }
+    return acc;
+  }, {});
+
+  // accumulate
+  let cases_total = 0;
+  let deaths_total = 0;
+  reports = Object.values(reports)
+    .sort((a, b) => a.last_updated.localeCompare(b.last_updated))
+    .map(r => {
+      r.cases_total = cases_total += r.cases_total;
+      r.deaths_total = deaths_total += r.deaths_total;
+      return r;
+    }).map(r => {
+      return {
+        infected_total: r.cases_total,
+        deaths_total: r.deaths_total,
+        date_day: r.last_updated,
+        last_updated: new Date().toISOString()
+      }
+    }).filter(r => r.date_day < (new Date().toISOString().split("T")[0]));
+
+  const AGS = county.region.AGS;
+  try {
+    const response = await axios(`https://covid19-api-backend.herokuapp.com/api/v0.1/county/${AGS}/cases/`);
+    const responseData = response.data;
+
+    reports = reports.map(r => {
+      const oldEntry = responseData.find(o => o.date_day === r.date_day);
+      return deepmerge(oldEntry || {}, r);
+    }).map(r => {
+      if (!r.intensive_total) delete r.intensive_total;
+      if (!r.immune_total) delete r.immune_total;
+      if (!r.quarantine_total) delete r.quarantine_total;
+      if (!r.infected_per_100k) delete r.infected_per_100k;
+      if (!r.death_rate || !r.deaths_total) delete r.death_rate;
+      return r;
+    });
+  } catch(err) {
+    console.log(`Error getting cases for AGS:${AGS} from server: ${err}`);
+  }
+
+  //console.log(reports);
+
+  let spinner;
+  try {
+    for (var data of reports) {
+      spinner = ora(
+        `sending historical case-data from "${data.date_day}" for "${county.region.name} (${county.region.AGS})" to server`
+      ).start();
+
+      let response = await axios({
+        method: "post",
+        url: `https://covid19-api-backend.herokuapp.com/api/v0.1/county/${county.region.AGS}/cases/`,
+        headers: {
+          Authorization: `Token ${process.env.API_TOKEN}`
+        },
+        data
+      });
+      spinner.succeed(
+        `${response.status}: ${response.statusText} case-data "${county.region.name}" [${data.date_day}]`
+      );
+
+    }
+  } catch (err) {
+    spinner.fail(
+      `POST cases-data "${county.region.name} (${county.region.AGS})": ${err.response.status}: ${err.response.statusText}`
+    );
+  }
+}
+
 async function sendDistribution(county) {
   for (const entry of county.distribution) {
     const spinner = ora(
@@ -142,13 +238,15 @@ async function sendDistribution(county) {
     }
   });
 
-  //const county = await dataCollector.getCountyDataByAGS('05370');
+  const county = await dataCollector.getCountyDataByAGS('05370');
   //console.log(county);
   //await sendCases(county);
   //await sendDistribution(county);
+  //await updateCases(county);
 
   const counties = await dataCollector.getCoutiesData();
   for (const county of counties) {
+    await updateCases(county);
     await sendCases(county);
     await sendDistribution(county);
   }
