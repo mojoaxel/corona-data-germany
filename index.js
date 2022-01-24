@@ -28,11 +28,22 @@ require('dotenv').config();
 	const county = await dataCollector.getCountyDataByAGS('05370');
 	console.log("Found county with AGS=05370: ", county);
 
-	// /* print all data as CSV */
-	// const counties = await dataCollector.getCoutiesData();
-	// console.log(`name; cases; deaths`);
-	// counties.forEach(c => {
-	// 	console.log(`${c.region.name}; ${c.data.cases}; ${c.data.deaths}`);
-	// });
+	/* print sorted data table */
+	const counties = await dataCollector.getCoutiesData();
+	console.table(
+		counties
+			.sort((a,b) => b.data.cases_per_100k - a.data.cases_per_100k)
+			.map(c => ({
+				name: c.region.name,
+				cases: c.data.cases_per_100k,
+				deaths: c.data.deaths_total
+			}))
+	);
+
+	/* print all data as CSV */
+	console.log(`name; cases; deaths`);
+	counties.forEach(c => {
+		console.log(`${c.region.name}; ${c.data.cases_per_100k}; ${c.data.deaths_total}`);
+	});
 
 })();
